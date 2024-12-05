@@ -43,27 +43,29 @@ def parse_times(filename: str) -> list[Timestamp]:
 
     return timestamps
 
-def fetch_text(start: FilePosition, size: int):
-    pass
-
 @click.command()
 @click.argument("basename", type=str)
 def collect(basename: str):
     # Example usage
     times_file = f"{basename}.times"
-    
+    src_code_file = f"{basename}.cpp"
+
     parsed_timestamps: list[Timestamp] = parse_times(times_file)
     times_dict = {stamp.id: stamp.time for stamp in parsed_timestamps}
     
     targets: list[ForLoop] = load_targets_file(basename)
+    assert len(targets) > 0
+    assert src_code_file == targets[0].for_token.file
+    full_src_code: str = open(src_code_file, 'r').read()
     samples: list[LoopSample] = []
+    
     for tgt in targets:
         start_time: float = times_dict[tgt.ident*2]
         end_time: float = times_dict[tgt.ident*2 + 1]
         duration: float = end_time - start_time
         samples.append(LoopSample(
             tgt,
-            fetch_text(tgt.for_token, tgt.scope.end_pos.offset-tgt.for_token.offset),
+            full_src_code[tgt.for_token.offset:tgt.scope.end_pos.offset],
             duration,
         ))
     
