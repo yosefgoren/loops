@@ -1,6 +1,6 @@
 import json
 from serial import *
-import shutil
+import click
 
 def insert(text_corpus: str, inserted: str, offset: int) -> str:
     before, after = text_corpus[:offset], text_corpus[offset:]
@@ -27,27 +27,32 @@ def atomic_modify(
         content = content.replace(old, new)
     open(out_file, 'w').write(content)
 
-data = json.load(open('targets.json', 'r'))
-targets: list[ForLoop] = [ForLoop.from_serial(raw_loop) for raw_loop in data]
+@click.command()
+@click.argument('basename', type=str)
+def modify(basename: str):
+    data = json.load(open(f'{basename}.targets.json', 'r'))
+    targets: list[ForLoop] = [ForLoop.from_serial(raw_loop) for raw_loop in data]
 
-assert len(targets) > 0
-tgt = targets[0]
-src_fname = tgt.for_token.file
-assert src_fname.endswith(".cpp")
-core_fname = src_fname[:-len('.cpp')]
-out_fname = f"{core_fname}.timed.cpp"
+    assert len(targets) > 0
+    src_fname = f"{basename}.cpp"
+    assert targets[0].for_token.file == src_fname
+    assert src_fname.endswith(".cpp")
+    out_fname = f"{basename}.timed.cpp"
 
 
-inserts: list[tuple[str, FilePosition]] = []
-includes: str = "".join([f"#include \"{name}\"\n" for name in ["timer.hpp", "omp.h"]])
-inserts.append((includes, 0))
-for loop in targets:
-    inserts.append(("__timer_capture__(0);", loop.for_token.offset))
-    inserts.append(("__timer_capture__(1);", loop.scope.end_pos.offset+1))
-replaces = [
-    ("//@#$init\n", f'__timer_init__("{core_fname}.times");\n'),
-    ("//@#$finish\n", f"__timer_finish__();\n")
-]
-# print("\n".join([str(m) for m in mods]))
-atomic_modify(src_fname, out_fname, inserts, replaces)
-print(f"results written to: {out_fname}")
+    inserts: list[tuple[str, FilePosition]] = []
+    includes: str = "".join([f"#include \"{name}\"\n" for name in ["timer.hpp", "omp.h"]])
+    inserts.append((includes, 0))
+    for loop in targets:
+        inserts.append(("__timer_capture__(0);", loop.for_token.offset))
+        inserts.append(("__timer_capture__(1);", loop.scope.end_pos.offset+1))
+    replaces = [
+        ("//@#$init\n", f'__timer_init__("{basename}.times");\n'),
+        ("//@#$finish\n", f"__timer_finish__();\n")
+    ]
+    # print("\n".join([str(m) for m in mods]))
+    atomic_modify(src_fname, out_fname, inserts, replaces)
+    print(f"results written to: {out_fname}")
+
+if __name__ == "__main__":
+    modify()

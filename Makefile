@@ -16,23 +16,23 @@ INCLUDES=-I./NPB-CPP/NPB-OMP\
 
 FLAGS=-fopenmp $(INCLUDES)
 
-scopes.json: main.cpp scrape.py
-	python3 scrape.py
+main.scopes.json: main.cpp scrape.py
+	python3 scrape.py main
 
-targets.json: scopes.json prune.py
-	python3 prune.py
+main.targets.json: main.scopes.json prune.py
+	python3 prune.py main
 
-main.timed.cpp: targets.json main.cpp modify.py
-	python3 modify.py
+main.timed.cpp: main.targets.json main.cpp modify.py
+	python3 modify.py main
 
-timed_main: timer.hpp main.timed.cpp
+main.timed.run: timer.hpp main.timed.cpp
 	$(CXX) $(FLAGS) -o $@ main.timed.cpp
 
-main.times: timed_main
-	./timed_main
+main.times: main.timed.run
+	./main.timed.run
 
 print: main.times parse_log.py
 	python3 parse_log.py main.times
 
 clean:
-	rm -f scopes.json targets.json main.timed.cpp timed_main main.times
+	rm -f main.scopes.json main.targets.json main.timed.cpp main.timed.run main.times

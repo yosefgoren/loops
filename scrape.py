@@ -6,6 +6,7 @@ import abc
 import random
 from typing import Any
 from serial import *
+import click
 
 FOR_PAT = r'\bfor\b'
 
@@ -71,9 +72,11 @@ class FileSeek:
         self.file_offset += n
         # print(f"Advanced to: {FilePosition(self.path, self.file_offset)}")
     
+@click.command()
+@click.argument('basename', type=str)
+def scrape(basename: str):
+    path = f"{basename}.cpp"
 
-# for path in [f"{PREFIX}/{suffix}.cpp" for suffix in SUFFIXES]:
-for path in ["main.cpp"]:
     print(f"parsing {path}")
     seek = FileSeek(path)
     context_stack: list[ScopeContext] = []
@@ -115,14 +118,17 @@ for path in ["main.cpp"]:
         if not delim_found:
             seek.advance(1) # Token was no associated with any scope, skip it
         
-founds: list[list[Any]] = [found_loops, found_scopes]
-for found in founds:
-    print("\n".join([f"{found[random.randint(0, len(found)-1)]}" for _ in range(min(20, len(found)))]))
+    founds: list[list[Any]] = [found_loops, found_scopes]
+    for found in founds:
+        print("\n".join([f"{found[random.randint(0, len(found)-1)]}" for _ in range(min(20, len(found)))]))
 
 
-result = {
-    "loops": [res.serialize() for res in found_loops],
-    "scopes": [res.serialize() for res in found_scopes]
-}
+    result = {
+        "loops": [res.serialize() for res in found_loops],
+        "scopes": [res.serialize() for res in found_scopes]
+    }
 
-json.dump(result, open("scopes.json", 'w'), indent=4)
+    json.dump(result, open(f"{basename}.scopes.json", 'w'), indent=4)
+
+if __name__ == "__main__":
+    scrape()

@@ -1,2 +1,7 @@
 main.cpp
 *.pyc
+main.timed.cpp
+main.times
+main.scopes.json
+main.targets.json
+main.timed.run
