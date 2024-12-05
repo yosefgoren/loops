@@ -1,0 +1,21 @@
+{
+    "prefix": "./NPB-CPP/NPB-OMP",
+    "suffixes": [
+        "BT/bt"
+    ],
+    "comment": [
+        "CG/cg",
+        "EP/ep",
+        "FT/ft",
+        "IS/is",
+        "LU/lu",
+        "MG/mg",
+        "SP/sp",
+        "common/c_print_results",
+        "common/c_randdp",
+        "common/c_timers",
+        "common/wtime",
+        "common/wtime_sgi64",
+        "sys/setparams"
+    ]
+}
