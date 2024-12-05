@@ -28,16 +28,16 @@ def atomic_modify(
     open(out_file, 'w').write(content)
 
 @click.command()
-@click.argument('basename', type=str)
-def modify(basename: str):
-    targets: list[ForLoop] = load_targets_file(basename)
+@click.option('-r', '--read_file', required=True, type=str)
+@click.option('-w', '--write_file', required=True, type=str)
+@click.option('-l', '--logs_filename', required=True, type=str)
+@click.option('-t', '--targets', required=True, type=str)
+def modify(read_file: str, write_file: str, logs_filename: str, targets: str):
+    targets: list[ForLoop] = load_targets_file(targets)
 
     assert len(targets) > 0
-    src_fname = f"{basename}.cpp"
-    assert targets[0].for_token.file == src_fname
-    assert src_fname.endswith(".cpp")
-    out_fname = f"{basename}.timed.cpp"
-
+    assert all([tgt.for_token.file == read_file for tgt in targets])
+    assert read_file.endswith(".cpp")
 
     inserts: list[tuple[str, int]] = []
     includes: str = "".join([f"#include \"{name}\"\n" for name in ["timer.hpp", "omp.h"]])
@@ -47,12 +47,12 @@ def modify(basename: str):
         inserts.append((f"__timer_capture__({loop.ident*2});", loop.for_token.offset))
         inserts.append((f"__timer_capture__({loop.ident*2+1});", loop.scope.end_pos.offset+1))
     replaces = [
-        ("//@#$init\n", f'__timer_init__("{basename}.times");\n'),
+        ("//@#$init\n", f'__timer_init__("{logs_filename}");\n'),
         ("//@#$finish\n", f"__timer_finish__();\n")
     ]
     # print("\n".join([str(m) for m in mods]))
-    atomic_modify(src_fname, out_fname, inserts, replaces)
-    print(f"results written to: {out_fname}")
+    atomic_modify(read_file, write_file, inserts, replaces)
+    print(f"results written to: {write_file}")
 
 if __name__ == "__main__":
     modify()

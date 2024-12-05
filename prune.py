@@ -47,9 +47,10 @@ def get_positions_in_scope(scope: CodeScope, offsets: list[int]) -> list[int]:
     return list(range(start_idx+1, end_idx))
 
 @click.command()
-@click.argument("basename", type=str)
-def prune(basename: str):
-    loops, scopes = load_scopes_file(basename)
+@click.option('-i', '--input', required=True, type=str, help="A json file with information about scopes in parsed code")
+@click.option('-o', '--output', required=True, type=str, help="A filtered file with only the wanted scopes")
+def prune(input: str, output: str):
+    loops, scopes = load_scopes_file(input)
     
     pos_by_offset: dict[int, FilePosition | CodeScope] = dict()
     dicts: list[dict[int, FilePosition | CodeScope]] = [
@@ -92,7 +93,7 @@ def prune(basename: str):
                 print(f"Got 'for': {value}, with scope: {scope}")
                 targets.append(ForLoop(value, scope, idx))
 
-    dump_targets_file(basename, targets)
+    dump_targets_file(output, targets)
 
 if __name__ == "__main__":
     prune()

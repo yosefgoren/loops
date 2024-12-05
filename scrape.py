@@ -73,12 +73,11 @@ class FileSeek:
         # print(f"Advanced to: {FilePosition(self.path, self.file_offset)}")
     
 @click.command()
-@click.argument('basename', type=str)
-def scrape(basename: str):
-    path = f"{basename}.cpp"
-
-    print(f"parsing {path}")
-    seek = FileSeek(path)
+@click.option('-i', '--input', required=True, type=str, help="A code file to be parsed")
+@click.option('-o', '--output', required=True, type=str, help="A json file with information about all scopes found in code")
+def scrape(input: str, output: str):
+    print(f"parsing {input}")
+    seek = FileSeek(input)
     context_stack: list[ScopeContext] = []
     
     start_tokens: list[str] = [delim.start[0] for delim in DELIMITERS] + [delim.end[0] for delim in DELIMITERS if not delim.bully]
@@ -87,11 +86,11 @@ def scrape(basename: str):
         token_offset, token_indices = find_next_token_offset(seek.remain_txt, start_tokens)
         
         if token_offset == -1:
-            process_chunk(seek.remain_txt, path, seek.file_offset)
+            process_chunk(seek.remain_txt, input, seek.file_offset)
             break
 
         chunk = seek.remain_txt[:token_offset]
-        process_chunk(chunk, path, seek.file_offset)
+        process_chunk(chunk, input, seek.file_offset)
         seek.advance(token_offset)
         delim_found = False
         for delim in [start_delims[idx] for idx in token_indices]:
@@ -101,7 +100,7 @@ def scrape(basename: str):
                     end_offset = seek.remain_txt.find(delim.end)
                     seek.advance(end_offset+len(delim.end))
                 else:
-                    context_stack.append(ScopeContext(delim.context_type, FilePosition(path, seek.file_offset)))
+                    context_stack.append(ScopeContext(delim.context_type, FilePosition(input, seek.file_offset)))
                     seek.advance(len(delim.start))
                 delim_found = True
             elif seek.remain_txt.startswith(delim.end) and not delim.bully:
@@ -109,9 +108,9 @@ def scrape(basename: str):
                     raise RuntimeError(f"a {delim.context_type} scoped ended but scope stack is empty")
                 top_scope = context_stack.pop()
                 if top_scope.context_type != delim.context_type:
-                    printpos(path, seek.file_offset)
+                    printpos(input, seek.file_offset)
                     raise RuntimeError(f"Top scope is {top_scope.context_type}, but a {delim.context_type} scope just ended.")
-                found_scopes.append(CodeScope(top_scope.context_type, top_scope.pos, FilePosition(path, seek.file_offset)))
+                found_scopes.append(CodeScope(top_scope.context_type, top_scope.pos, FilePosition(input, seek.file_offset)))
                 seek.advance(len(delim.end))
                 delim_found = True
         
@@ -122,7 +121,7 @@ def scrape(basename: str):
     for found in founds:
         print("\n".join([f"{found[random.randint(0, len(found)-1)]}" for _ in range(min(20, len(found)))]))
 
-    dump_scopes_file(basename, (found_loops, found_scopes))
+    dump_scopes_file(output, (found_loops, found_scopes))
     
 if __name__ == "__main__":
     scrape()
