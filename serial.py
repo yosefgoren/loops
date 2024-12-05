@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
 from utils.indexed_file import resolve_lineno
+import json
 
 class ContextType(Enum):
     QUOTES = "quotes"
@@ -77,18 +78,34 @@ class CodeScope:
             FilePosition.from_serial(data["end_pos"]), # type: ignore[arg-type]
         )
 
+def dump_scopes_file(basename: str, values: tuple[list[FilePosition], list[CodeScope]]) -> None:
+    result = {
+        "loops": [res.serialize() for res in values[0]],
+        "scopes": [res.serialize() for res in values[1]]
+    }
+    json.dump(result, open(f"{basename}.scopes.json", 'w'), indent=4)
+
+
+def load_scopes_file(basename: str) -> tuple[list[FilePosition], list[CodeScope]]:
+    data = json.load(open(f'{basename}.scopes.json', 'r'))
+    loops: list[FilePosition] = [FilePosition.from_serial(elem) for elem in data["loops"]]
+    scopes: list[CodeScope] = [CodeScope.from_serial(elem) for elem in data["scopes"]]
+    return loops, scopes
+
 @dataclass
 class ForLoop:
     for_token: FilePosition
     scope: CodeScope
+    ident: int
 
     def __str__(self) -> str:
-        return f"For loop at {self.for_token}, Scope {self.scope}"
+        return f"For loop {self.ident} at {self.for_token}, Scope {self.scope}"
     
     def serialize(self) -> dict[str, object]:
         return {
             "for_token": self.for_token.serialize(),
             "scope": self.scope.serialize(),
+            "ident": self.ident
         }
     
     @staticmethod
@@ -96,4 +113,43 @@ class ForLoop:
         return ForLoop(
             FilePosition.from_serial(data["for_token"]), # type: ignore[arg-type]
             CodeScope.from_serial(data["scope"]), # type: ignore[arg-type]
+            data["ident"], # type: ignore[arg-type]
         )
+    
+def dump_targets_file(basename: str, targets: list[ForLoop]) -> None:
+    json.dump([loop.serialize() for loop in targets], open(f'{basename}.targets.json', 'w'), indent=4)
+
+def load_targets_file(basename: str) -> list[ForLoop]:
+    data = json.load(open(f'{basename}.targets.json', 'r'))
+    return [ForLoop.from_serial(raw_loop) for raw_loop in data]
+
+@dataclass
+class LoopSample:
+    loop: ForLoop
+    raw_code: str
+    duration: float
+
+    def __str__(self) -> str:
+        return f"Sample: '{self.loop}' took {self.duration:.4} seconds"
+
+    def serialize(self) -> dict[str, object]:
+        return {
+            "loop": self.loop.serialize(),
+            "raw_code": self.raw_code,
+            "duration": self.duration,
+        }
+    
+    @staticmethod
+    def from_serial(data: dict[str, object]):
+        return LoopSample(
+            ForLoop.from_serial(data["loop"]), # type: ignore[arg-type]
+            data["raw_code"], # type: ignore[arg-type]
+            data["duration"], # type: ignore[arg-type]
+        )
+
+def dump_samples_file(basename: str, samples: list[LoopSample]) -> None:
+    json.dump([s.serialize() for s in samples], open(f'{basename}.samples.json', 'w'), indent=4)
+
+def load_samples_file(basename: str) -> list[LoopSample]:
+    data = json.load(f'{basename}.samples.json', 'r')
+    return [LoopSample.from_serial(s) for s in data]

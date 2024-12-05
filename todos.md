@@ -1,4 +1,5 @@
 ## Loops Dataset creation
+* get working for actual dataset
 * insert `#include <omp.h>` so will always be able to omp_get_wtime, and always flag `-fopenmp`
 
 ## Learning

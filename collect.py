@@ -1,6 +1,7 @@
 import struct
 from dataclasses import dataclass
-from typing import List
+import click
+from serial import *
 
 # Define the Timestamp dataclass
 @dataclass
@@ -8,7 +9,7 @@ class Timestamp:
     time: float  # Time in seconds
     id: int      # User-provided ID
 
-def parse(filename: str) -> List[Timestamp]:
+def parse_times(filename: str) -> list[Timestamp]:
     """
     Parse the binary log file and return a list of Timestamp objects.
 
@@ -42,11 +43,31 @@ def parse(filename: str) -> List[Timestamp]:
 
     return timestamps
 
-if __name__ == "__main__":
-    # Example usage
-    log_file = "main.times"
-    parsed_timestamps = parse(log_file)
+def fetch_text(start: FilePosition, size: int):
+    pass
 
-    # Display the parsed timestamps
-    for timestamp in parsed_timestamps:
-        print(timestamp)
+@click.command()
+@click.argument("basename", type=str)
+def collect(basename: str):
+    # Example usage
+    times_file = f"{basename}.times"
+    
+    parsed_timestamps: list[Timestamp] = parse_times(times_file)
+    times_dict = {stamp.id: stamp.time for stamp in parsed_timestamps}
+    
+    targets: list[ForLoop] = load_targets_file(basename)
+    samples: list[LoopSample] = []
+    for tgt in targets:
+        start_time: float = times_dict[tgt.ident*2]
+        end_time: float = times_dict[tgt.ident*2 + 1]
+        duration: float = end_time - start_time
+        samples.append(LoopSample(
+            tgt,
+            fetch_text(tgt.for_token, tgt.scope.end_pos.offset-tgt.for_token.offset),
+            duration,
+        ))
+    
+    dump_samples_file(basename, samples)
+
+if __name__ == "__main__":
+    collect()

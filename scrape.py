@@ -122,13 +122,7 @@ def scrape(basename: str):
     for found in founds:
         print("\n".join([f"{found[random.randint(0, len(found)-1)]}" for _ in range(min(20, len(found)))]))
 
-
-    result = {
-        "loops": [res.serialize() for res in found_loops],
-        "scopes": [res.serialize() for res in found_scopes]
-    }
-
-    json.dump(result, open(f"{basename}.scopes.json", 'w'), indent=4)
-
+    dump_scopes_file(basename, (found_loops, found_scopes))
+    
 if __name__ == "__main__":
     scrape()

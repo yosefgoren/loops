@@ -30,8 +30,7 @@ def atomic_modify(
 @click.command()
 @click.argument('basename', type=str)
 def modify(basename: str):
-    data = json.load(open(f'{basename}.targets.json', 'r'))
-    targets: list[ForLoop] = [ForLoop.from_serial(raw_loop) for raw_loop in data]
+    targets: list[ForLoop] = load_targets_file(basename)
 
     assert len(targets) > 0
     src_fname = f"{basename}.cpp"
@@ -40,12 +39,13 @@ def modify(basename: str):
     out_fname = f"{basename}.timed.cpp"
 
 
-    inserts: list[tuple[str, FilePosition]] = []
+    inserts: list[tuple[str, int]] = []
     includes: str = "".join([f"#include \"{name}\"\n" for name in ["timer.hpp", "omp.h"]])
     inserts.append((includes, 0))
     for loop in targets:
-        inserts.append(("__timer_capture__(0);", loop.for_token.offset))
-        inserts.append(("__timer_capture__(1);", loop.scope.end_pos.offset+1))
+        # ident*2 is the loop start ID, ident*2+1 is the loop end ID
+        inserts.append((f"__timer_capture__({loop.ident*2});", loop.for_token.offset))
+        inserts.append((f"__timer_capture__({loop.ident*2+1});", loop.scope.end_pos.offset+1))
     replaces = [
         ("//@#$init\n", f'__timer_init__("{basename}.times");\n'),
         ("//@#$finish\n", f"__timer_finish__();\n")

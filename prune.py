@@ -49,10 +49,8 @@ def get_positions_in_scope(scope: CodeScope, offsets: list[int]) -> list[int]:
 @click.command()
 @click.argument("basename", type=str)
 def prune(basename: str):
-    data = json.load(open(f'{basename}.scopes.json', 'r'))
-    loops: list[FilePosition] = [FilePosition.from_serial(elem) for elem in data["loops"]]
-    scopes: list[CodeScope] = [CodeScope.from_serial(elem) for elem in data["scopes"]]
-
+    loops, scopes = load_scopes_file(basename)
+    
     pos_by_offset: dict[int, FilePosition | CodeScope] = dict()
     dicts: list[dict[int, FilePosition | CodeScope]] = [
         {f.offset: f for f in loops},
@@ -92,9 +90,9 @@ def prune(basename: str):
                         # print(f"disqualifying: {inner_value}")
                         disq_inner_loop_indices.add(inner_pos_idx)
                 print(f"Got 'for': {value}, with scope: {scope}")
-                targets.append(ForLoop(value, scope))
+                targets.append(ForLoop(value, scope, idx))
 
-    json.dump([loop.serialize() for loop in targets], open(f'{basename}.targets.json', 'w'), indent=4)
+    dump_targets_file(basename, targets)
 
 if __name__ == "__main__":
     prune()

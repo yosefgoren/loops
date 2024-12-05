@@ -1,4 +1,4 @@
-all: print
+all: main.samples.json
 
 CXX=g++
 INCLUDES=-I./NPB-CPP/NPB-OMP\
@@ -31,8 +31,8 @@ main.timed.run: timer.hpp main.timed.cpp
 main.times: main.timed.run
 	./main.timed.run
 
-print: main.times parse_log.py
-	python3 parse_log.py main.times
+main.samples.json: main.times collect.py
+	python3 collect.py main
 
 clean:
-	rm -f main.scopes.json main.targets.json main.timed.cpp main.timed.run main.times
+	rm -f main.scopes.json main.targets.json main.timed.cpp main.timed.run main.times main.samples.json
