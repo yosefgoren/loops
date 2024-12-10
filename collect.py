@@ -47,17 +47,16 @@ def collect(output: str, runtimes_file: str, source_file: str, loops_file: str):
     
     targets: list[ForLoop] = load_targets_file(loops_file)
     assert len(targets) > 0
-    assert source_file == targets[0].for_token.file
     full_src_code: str = open(source_file, 'r').read()
     samples: list[LoopSample] = []
     
     for tgt in targets:
-        start_time: float = times_dict[tgt.ident*2]
-        end_time: float = times_dict[tgt.ident*2 + 1]
-        duration: float = end_time - start_time
+        start_time: float | None = times_dict.get(tgt.ident*2, None)
+        end_time: float | None = times_dict.get(tgt.ident*2 + 1, None)
+        duration: float | None = (end_time - start_time) if (end_time is not None and start_time is not None) else None
         samples.append(LoopSample(
             tgt,
-            full_src_code[tgt.for_token.offset:tgt.scope.end_pos.offset],
+            full_src_code[tgt.for_token.offset:tgt.scope.end_pos.offset+1],
             duration,
         ))
     

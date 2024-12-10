@@ -1,0 +1,2 @@
+* Task Description: should we describe the task to the model before each question (regardless of fine-tuning), for example by specifying the actual time intervals of each timing class.
+* Code Context: how much code context should we provide with each prompt to enhance the ability of the model to comprehend the code to be profiled.
