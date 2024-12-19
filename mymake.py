@@ -84,9 +84,14 @@ for bench in [
     sample_nodes.append(node)
     all_rules += new_rules
 
-dataset = DynamicFileNode("dataset.json")
-gen_dataset_cmdline = f"python3 finalize.py {dataset.path} {' '.join([node.path for node in sample_nodes])}"
-all_rules.append(ShellRule(dataset, sample_nodes, gen_dataset_cmdline))
+dataset_name = "ompcpp"
+dataset_files = DynamicFileNode(f"{dataset_name}.train.jsonl") # TODO: add MAKE-API feature for target with multiple files, and use it here to make ompcpp.validate.jsonl another declared target.
+gen_dataset_cmdline = f"python3 finalize.py {dataset_name} {' '.join([node.path for node in sample_nodes])}"
+all_rules.append(ShellRule(dataset_files, sample_nodes, gen_dataset_cmdline))
+
+dataset_zip = DynamicFileNode(f"{dataset_name}.zip")
+all_rules.append(ShellRule(dataset_zip, [dataset_files], f"zip {dataset_zip.path} {dataset_name}.train.jsonl {dataset_name}.validate.jsonl"))
+
 
 # Generic Make-API CLI
 # TODO: add script to avoid writing this every time
