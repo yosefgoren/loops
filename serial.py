@@ -129,7 +129,7 @@ def load_targets_file(path: str) -> list[ForLoop]:
 class LoopSample:
     loop: ForLoop
     raw_code: str
-    duration: float
+    duration: float | None
 
     def __str__(self) -> str:
         return f"Sample: '{self.loop}' took {self.duration:.4} seconds"
@@ -154,5 +154,5 @@ def dump_samples_file(path: str, samples: list[LoopSample]) -> None:
 
 def load_samples_file(path: str) -> list[LoopSample]:
     assert path.endswith('.json')
-    data = json.load(path, 'r')
+    data = json.load(open(path, 'r'))
     return [LoopSample.from_serial(s) for s in data]

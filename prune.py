@@ -8,9 +8,9 @@ def list_from_serial(data: list[dict[str, object]], parser) -> list[object]:
 class FlowError(RuntimeError):
     def __init__(self):
         super("Unexpected Control Flow")
-class SyntaxError(RuntimeError):
-    def __init__(self, note: str | None = None):
-        super("Flow indicates syntax error in input" + "" if note is None else note)
+
+def syntax_error(note: str | None = None) -> RuntimeError:
+    return RuntimeError("Flow indicates syntax error in input" + "" if note is None else note)
 
 
 def find_qualified_scope_ending(pos_idx: int, ordered_positions: list[tuple[int, FilePosition | CodeScope]]) -> None | CodeScope:
@@ -27,7 +27,10 @@ def find_qualified_scope_ending(pos_idx: int, ordered_positions: list[tuple[int,
                 if value.start_pos.offset == offset:
                     return value
                 elif value.end_pos.offset == offset:
-                    raise SyntaxError("Did not expect closing '}' before '{' after 'for'")
+                    print("Warning: Did not expect closing '}' before '{' after 'for'. Disqualifying loop.")
+                    return None
+                    # TODO: deal with case where 'for' has no braces '{}', which causes error above to occur, see ep.cpp:246?
+                    # raise syntax_error("Did not expect closing '}' before '{' after 'for'")
                 else:
                     raise FlowError()
             else:

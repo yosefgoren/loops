@@ -62,7 +62,7 @@ def printpos(path: str, file_offset: int) -> None:
     print(FilePosition(path, file_offset))
 
 class FileSeek:
-    def __init__(self, path):
+    def __init__(self, path) -> None:
         self.file_offset: int = 0
         self.remain_txt: str = open(path, 'r').read()
         self.path: str = path
