@@ -5,7 +5,10 @@ import click
 BASEDIR = "./NPB-CPP/NPB-OMP"
 BINDIR = f"{BASEDIR}/bin"
 
-def nas_collection_rules(bench_name: str) -> list[Rule]:    
+def nas_collection_rules(bench_name: str) -> tuple[list[Rule], DynamicFileNode]:
+    """
+    Returns a generated samples node and a list of rules required for creating it.
+    """
     rules: list[Rule] = []
     
     # src_file is never a dependency since it is modified (and will cause incorrect reconstruction)
@@ -52,11 +55,11 @@ def nas_collection_rules(bench_name: str) -> list[Rule]:
         f"python3 {collect_script.path} -o {samples.path} --runtimes_file {times_log.path} --source_file {src_file_copy.path} --loops_file {targets.path}"
     ))
     
-    return rules
+    return rules, samples
 
 
 all_rules: list[Rule] = []
-sample_targets: list[Node] = []
+sample_nodes: list[DynamicFileNode] = []
 
 # Add rules shared across all benchmarks:
 timer_cpp_lib = StaticFileNode("timer.hpp")
@@ -77,9 +80,13 @@ for bench in [
     "mg",
     "sp",
 ]:
-    new_rules= nas_collection_rules(bench)
+    new_rules, node = nas_collection_rules(bench)
+    sample_nodes.append(node)
     all_rules += new_rules
 
+dataset = DynamicFileNode("dataset.json")
+gen_dataset_cmdline = f"python3 finalize.py {dataset.path} {' '.join([node.path for node in sample_nodes])}"
+all_rules.append(ShellRule(dataset, sample_nodes, gen_dataset_cmdline))
 
 # Generic Make-API CLI
 # TODO: add script to avoid writing this every time
