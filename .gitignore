@@ -15,3 +15,4 @@ augmentation/augmentation-results/
 validation/model-outputs/
 ompcpp.train.jsonl
 ompcpp.validate.jsonl
+ompcpp.zip

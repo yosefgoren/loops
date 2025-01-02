@@ -1,5 +1,5 @@
 import json
-from serial import *
+from utils.serialize import *
 import click
 
 def list_from_serial(data: list[dict[str, object]], parser) -> list[object]:

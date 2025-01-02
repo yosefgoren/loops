@@ -4,13 +4,19 @@ import click
 
 BASEDIR = "./NPB-CPP/NPB-OMP"
 BINDIR = f"{BASEDIR}/bin"
+BASE_DATASET_DIR = "base_dataset"
 
-scopes_script = StaticFileNode("scrape.py")
-targets_script = StaticFileNode("prune.py")
-modify_script = StaticFileNode("modify.py")
-collect_script = StaticFileNode("collect.py")
+scopes_script = StaticFileNode(f"{BASE_DATASET_DIR}/scrape.py")
+targets_script = StaticFileNode(f"{BASE_DATASET_DIR}/prune.py")
+modify_script = StaticFileNode(f"{BASE_DATASET_DIR}/modify.py")
+collect_script = StaticFileNode(f"{BASE_DATASET_DIR}/collect.py")
+finalize_script = StaticFileNode(f"{BASE_DATASET_DIR}/finalize.py")
 
-finalize_script = StaticFileNode("finalize.py")
+def pymodule_script_prefix(script_path: str) -> str:
+    if not script_path.endswith('.py'):
+        raise ValueError(f"expected to receive a python script (ending with .py) but got: '{script_path}'")
+    no_suffix_path = script_path[:-3]
+    return f"python3 -m {no_suffix_path.replace('/', '.')}"
 
 def nas_collection_rules(bench_name: str) -> tuple[list[Rule], DynamicFileNode]:
     """
@@ -28,12 +34,12 @@ def nas_collection_rules(bench_name: str) -> tuple[list[Rule], DynamicFileNode]:
 
     scopes = DynamicFileNode(f"./samples/{bench_name}.scopes.json")
     rules.append(ShellRule(scopes, [scopes_script],
-        f"python3 {scopes_script.path} --input {src_file.path} -o {scopes.path}"
+        f"{pymodule_script_prefix(scopes_script.path)} --input {src_file.path} -o {scopes.path}"
     ))
 
     targets = DynamicFileNode(f"./samples/{bench_name}.targets.json")
     rules.append(ShellRule(targets, [scopes, targets_script],
-        f"python3 {targets_script.path} --input {scopes.path} -o {targets.path}"
+        f"{pymodule_script_prefix(targets_script.path)} --input {scopes.path} -o {targets.path}"
     ))
 
     times_log = DynamicFileNode(f"./samples/{bench_name}.times")
@@ -41,7 +47,7 @@ def nas_collection_rules(bench_name: str) -> tuple[list[Rule], DynamicFileNode]:
     modified = DynamicFileNode(f"./labels/{bench_name}-modified.label")
     rules.append(ShellRule(modified, [targets, modify_script],
         ' && '.join([
-            f"python3 {modify_script.path} --read_file {src_file.path} --write_file {src_file.path} --logs_filename {times_log.path} --tgt_file {targets.path}",
+            f"{pymodule_script_prefix(modify_script.path)} --read_file {src_file.path} --write_file {src_file.path} --logs_filename {times_log.path} --tgt_file {targets.path}",
             f"touch {modified.path}"
         ])
     ))
@@ -55,7 +61,7 @@ def nas_collection_rules(bench_name: str) -> tuple[list[Rule], DynamicFileNode]:
 
     samples = DynamicFileNode(f"./samples/{bench_name}.samples.json")
     rules.append(ShellRule(samples, [times_log, targets, collect_script, src_file_copy],
-        f"python3 {collect_script.path} -o {samples.path} --runtimes_file {times_log.path} --source_file {src_file_copy.path} --loops_file {targets.path}"
+        f"{pymodule_script_prefix(collect_script.path)} -o {samples.path} --runtimes_file {times_log.path} --source_file {src_file_copy.path} --loops_file {targets.path}"
     ))
     
     return rules, samples
@@ -89,7 +95,7 @@ for bench in [
 
 dataset_name = "ompcpp"
 dataset_files = DynamicFileNode(f"{dataset_name}.train.jsonl") # TODO: add MAKE-API feature for target with multiple files, and use it here to make ompcpp.validate.jsonl another declared target.
-gen_dataset_cmdline = f"python3 {finalize_script.path} {dataset_name} {' '.join([node.path for node in sample_nodes])}"
+gen_dataset_cmdline = f"{pymodule_script_prefix(finalize_script.path)} {dataset_name} {' '.join([node.path for node in sample_nodes])}"
 all_rules.append(ShellRule(dataset_files, sample_nodes, gen_dataset_cmdline))
 
 dataset_zip = DynamicFileNode(f"{dataset_name}.zip")

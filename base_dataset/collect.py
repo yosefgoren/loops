@@ -1,7 +1,7 @@
 import struct
 from dataclasses import dataclass
 import click
-from serial import *
+from utils.serialize import *
 
 # Define the Timestamp dataclass
 @dataclass

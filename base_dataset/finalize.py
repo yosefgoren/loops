@@ -1,6 +1,6 @@
 import click
 import json
-from serial import *
+from utils.serialize import *
 import random
 
 SYSTEM_PROMPT = "You are a specialized chatbot trained to estimate the parallel execution time of given OpenMP parallelized code snippets. Your task is to classify the code's execution time into one of five categories based on complexity and potential runtime:\n1 - None: Minimal or no execution time.\n2 - Low: Slight time consumption.\n3 - Medium: Moderate time consumption.\n4 - Much: High time consumption.\n5 - Lots: Very high time consumption.\n"

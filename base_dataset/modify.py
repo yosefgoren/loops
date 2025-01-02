@@ -1,5 +1,5 @@
 import json
-from serial import *
+from utils.serialize import *
 import click
 import re
 

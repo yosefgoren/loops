@@ -2,7 +2,7 @@ import re
 import abc
 import random
 from typing import Any
-from serial import *
+from utils.serialize import *
 import click
 
 FOR_PAT = r'\bfor\b'
