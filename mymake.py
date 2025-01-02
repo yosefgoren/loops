@@ -5,6 +5,13 @@ import click
 BASEDIR = "./NPB-CPP/NPB-OMP"
 BINDIR = f"{BASEDIR}/bin"
 
+scopes_script = StaticFileNode("scrape.py")
+targets_script = StaticFileNode("prune.py")
+modify_script = StaticFileNode("modify.py")
+collect_script = StaticFileNode("collect.py")
+
+finalize_script = StaticFileNode("finalize.py")
+
 def nas_collection_rules(bench_name: str) -> tuple[list[Rule], DynamicFileNode]:
     """
     Returns a generated samples node and a list of rules required for creating it.
@@ -14,10 +21,6 @@ def nas_collection_rules(bench_name: str) -> tuple[list[Rule], DynamicFileNode]:
     # src_file is never a dependency since it is modified (and will cause incorrect reconstruction)
     src_file = StaticFileNode(f"{BASEDIR}/{bench_name.upper()}/{bench_name}.cpp")
 
-    scopes_script = StaticFileNode("scrape.py")
-    targets_script = StaticFileNode("prune.py")
-    modify_script = StaticFileNode("modify.py")
-    collect_script = StaticFileNode("collect.py")
 
     src_file_copy = DynamicFileNode(f"{BASEDIR}/{bench_name.upper()}/orig_{bench_name}.cpp")
 
@@ -86,7 +89,7 @@ for bench in [
 
 dataset_name = "ompcpp"
 dataset_files = DynamicFileNode(f"{dataset_name}.train.jsonl") # TODO: add MAKE-API feature for target with multiple files, and use it here to make ompcpp.validate.jsonl another declared target.
-gen_dataset_cmdline = f"python3 finalize.py {dataset_name} {' '.join([node.path for node in sample_nodes])}"
+gen_dataset_cmdline = f"python3 {finalize_script.path} {dataset_name} {' '.join([node.path for node in sample_nodes])}"
 all_rules.append(ShellRule(dataset_files, sample_nodes, gen_dataset_cmdline))
 
 dataset_zip = DynamicFileNode(f"{dataset_name}.zip")

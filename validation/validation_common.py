@@ -1,0 +1,1 @@
+VALIDATION_OUTPUT_BASEDIR = "validation/model-outputs"

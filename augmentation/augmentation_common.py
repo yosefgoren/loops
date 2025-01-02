@@ -1,0 +1,1 @@
+AUGMENTATION_OUTPUT_BASEDIR = "augmentation-results/augmentation-results"

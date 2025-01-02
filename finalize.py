@@ -56,6 +56,12 @@ def split_list_randomly(ls: list[dict], first_set_size: int) -> tuple[list[dict]
     
     return group1, group2
 
+
+def dump_jsonl(content: list[dict], out_path: str) -> None:
+    with open(out_path, 'w') as outf:
+        for entry in content:
+            outf.write(json.dumps(entry) + "\n")
+
 @click.command()
 @click.argument('output_prefix', type=str)
 @click.argument('input_files', nargs=-1, type=str)
@@ -97,8 +103,8 @@ def finalize(output_prefix: str, input_files: list[str]) -> None:
     train, validate = split_list_randomly(dataset, train_set_size)
 
     # Write the generated dataset to the output file:
-    json.dump(train, open(f"{output_prefix}.train.jsonl", 'w'), indent=4)
-    json.dump(validate, open(f"{output_prefix}.validate.jsonl", 'w'), indent=4)
+    dump_jsonl(train, f"{output_prefix}.train.jsonl")
+    dump_jsonl(validate, f"{output_prefix}.validate.jsonl")
 
 if __name__ == "__main__":
     finalize()

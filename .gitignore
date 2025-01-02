@@ -9,3 +9,9 @@ main.samples.json
 .vscode/
 samples/
 labels/
+utils/api_key.txt
+api_key.txt
+augmentation/augmentation-results/
+validation/model-outputs/
+ompcpp.train.jsonl
+ompcpp.validate.jsonl
