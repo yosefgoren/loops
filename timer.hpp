@@ -7,6 +7,7 @@
 typedef struct {
     double time; // Time in seconds
     uint64_t id;      // User-provided ID
+    int32_t thread_id; // ID of the thread writing the timestamp
  } __attribute__((packed)) LogEntry;
 
 // Global file pointer for the log file
@@ -33,6 +34,7 @@ int __timer_capture__(int id) {
     LogEntry entry;
     entry.time = omp_get_wtime(); // Capture the current time
     entry.id = id;
+    entry.thread_id = omp_get_thread_num();
 
     // Write the log entry to the file
     if (fwrite(&entry, sizeof(LogEntry), 1, logFile) != 1) {

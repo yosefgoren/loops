@@ -18,7 +18,7 @@ def pymodule_script_prefix(script_path: str) -> str:
     no_suffix_path = script_path[:-3]
     return f"python3 -m {no_suffix_path.replace('/', '.')}"
 
-def nas_collection_rules(bench_name: str) -> tuple[list[Rule], DynamicFileNode]:
+def nas_collection_rules(bench_name: str, do_parallel: bool) -> tuple[list[Rule], DynamicFileNode]:
     """
     Returns a generated samples node and a list of rules required for creating it.
     """
@@ -47,7 +47,7 @@ def nas_collection_rules(bench_name: str) -> tuple[list[Rule], DynamicFileNode]:
     modified = DynamicFileNode(f"./labels/{bench_name}-modified.label")
     rules.append(ShellRule(modified, [targets, modify_script],
         ' && '.join([
-            f"{pymodule_script_prefix(modify_script.path)} --read_file {src_file.path} --write_file {src_file.path} --logs_filename {times_log.path} --tgt_file {targets.path}",
+            f"{pymodule_script_prefix(modify_script.path)} --read_file {src_file.path} --write_file {src_file.path} --logs_filename {times_log.path} --tgt_file {targets.path} --parallel {'True' if do_parallel else 'False'}",
             f"touch {modified.path}"
         ])
     ))
@@ -89,7 +89,7 @@ for bench in [
     "mg",
     "sp",
 ]:
-    new_rules, node = nas_collection_rules(bench)
+    new_rules, node = nas_collection_rules(bench, True)
     sample_nodes.append(node)
     all_rules += new_rules
 

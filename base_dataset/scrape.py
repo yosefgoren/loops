@@ -8,11 +8,12 @@ import click
 FOR_PAT = r'\bfor\b'
 
 DELIMITERS: list[ScopeDelimiter] = [
-    ScopeDelimiter("\"", "\"", True, ContextType.QUOTES),
-    ScopeDelimiter("/*", "*/", True, ContextType.MULTICOMMENT),
-    ScopeDelimiter("//", "\n", True, ContextType.UNICOMMENT),
-    ScopeDelimiter("(", ")", False, ContextType.COLONS),
-    ScopeDelimiter("{", "}", False, ContextType.BRACES),
+    ScopeDelimiter("\"", "\"", True, False, ContextType.QUOTES),
+    ScopeDelimiter("/*", "*/", True, False, ContextType.MULTICOMMENT),
+    ScopeDelimiter("//", "\n", True, False, ContextType.UNICOMMENT),
+    ScopeDelimiter("#pragma", "\n", True, True, ContextType.PRAGMA),
+    ScopeDelimiter("(", ")", False, True, ContextType.COLONS),
+    ScopeDelimiter("{", "}", False, True, ContextType.BRACES),
 ]
 
 class Disq(abc.ABC):
@@ -50,6 +51,14 @@ def find_next_token_offset(text: str, tokens: list[str]) -> tuple[int, list[int]
     return -1, []
 
 def process_chunk(chunk: str, path: str, file_off: int) -> None:
+    """
+    This function goes over the provided chunck of code and searches for any 'for' loops within.
+    This is done by first finding all instances of the string 'for', then disqualifying all instances
+        of the 'for' string which are not actually a syntactic 'for' loop.
+    For example. `#pragma omp for` is not a syntactic 'for' loop,
+        thus any instance of the 'for' string which is prefixed by `#pragma omp `
+        is disqualified (note there is no newline in the prefix).
+    """
     for match in re.finditer(FOR_PAT, chunk):
         pos = FilePosition(path, file_off + match.span()[0])
         if not any([dis.check(pos) for dis in disqs]):    
@@ -93,21 +102,27 @@ def scrape(input: str, output: str):
         for delim in [start_delims[idx] for idx in token_indices]:
             if seek.remain_txt.startswith(delim.start):
                 if delim.bully:
+                    scope_start_pos = FilePosition(input, seek.file_offset)
                     seek.advance(len(delim.start))
                     end_offset = seek.remain_txt.find(delim.end)
                     seek.advance(end_offset+len(delim.end))
+                    scope_end_pos = FilePosition(input, seek.file_offset)
+                    if delim.do_save:
+                        found_scopes.append(CodeScope(delim.context_type, scope_start_pos, scope_end_pos))
                 else:
-                    context_stack.append(ScopeContext(delim.context_type, FilePosition(input, seek.file_offset)))
+                    if delim.do_save:
+                        context_stack.append(ScopeContext(delim.context_type, FilePosition(input, seek.file_offset)))
                     seek.advance(len(delim.start))
                 delim_found = True
             elif seek.remain_txt.startswith(delim.end) and not delim.bully:
                 if len(context_stack) == 0:
                     raise RuntimeError(f"a {delim.context_type} scoped ended but scope stack is empty")
-                top_scope = context_stack.pop()
-                if top_scope.context_type != delim.context_type:
-                    printpos(input, seek.file_offset)
-                    raise RuntimeError(f"Top scope is {top_scope.context_type}, but a {delim.context_type} scope just ended.")
-                found_scopes.append(CodeScope(top_scope.context_type, top_scope.pos, FilePosition(input, seek.file_offset)))
+                if delim.do_save:
+                    top_scope = context_stack.pop()
+                    if top_scope.context_type != delim.context_type:
+                        printpos(input, seek.file_offset)
+                        raise RuntimeError(f"Top scope is {top_scope.context_type}, but a {delim.context_type} scope just ended.")
+                    found_scopes.append(CodeScope(top_scope.context_type, top_scope.pos, FilePosition(input, seek.file_offset)))
                 seek.advance(len(delim.end))
                 delim_found = True
         

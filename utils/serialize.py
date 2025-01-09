@@ -9,6 +9,7 @@ class ContextType(Enum):
     UNICOMMENT = "unicomment"
     COLONS = "colons"
     BRACES = "braces"
+    PRAGMA = "pragma"
 
 @dataclass
 class FilePosition:
@@ -44,10 +45,11 @@ class FilePosition:
 @dataclass
 class ScopeDelimiter:
     """Information for parsing a scoped context such as (*), '*' e.t.c."""
-    start: str
-    end: str
-    bully: bool
-    context_type: ContextType
+    start: str # 'start' defines the delimiter which may cause an instance of this scope to be opened.
+    end: str # 'end' defines the delimiter which may cause an instance of this scoped to be closed.
+    bully: bool # 'bully' means that nested scopes are not allowed within a scope of this type.
+    do_save: bool # 'save' defines wether the parsed instances of this scope type should be saved to the output or ignored.
+    context_type: ContextType # 'context_type' specifies what linguistic structure scopes of this type should be associated with.
 
 @dataclass
 class ScopeContext:
@@ -98,6 +100,7 @@ class ForLoop:
     for_token: FilePosition
     scope: CodeScope
     ident: int
+    directive_start: FilePosition | None
 
     def __str__(self) -> str:
         return f"For loop {self.ident} at {self.for_token}, Scope {self.scope}"
@@ -106,15 +109,19 @@ class ForLoop:
         return {
             "for_token": self.for_token.serialize(),
             "scope": self.scope.serialize(),
-            "ident": self.ident
+            "ident": self.ident,
+            "directive_start": None if self.directive_start is None else self.directive_start.serialize()
         }
     
     @staticmethod
     def from_serial(data: dict[str, object]):
+        raw_directive = data["directive_start"]
+        directive = None if raw_directive is None else FilePosition.from_serial(raw_directive)
         return ForLoop(
             FilePosition.from_serial(data["for_token"]), # type: ignore[arg-type]
             CodeScope.from_serial(data["scope"]), # type: ignore[arg-type]
             data["ident"], # type: ignore[arg-type]
+            directive # type: ignore[arg-type]
         )
     
 def dump_targets_file(path: str, targets: list[ForLoop]) -> None:
@@ -130,6 +137,7 @@ class LoopSample:
     loop: ForLoop
     raw_code: str
     duration: float | None
+    num_threads: int
 
     def __str__(self) -> str:
         return f"Sample: '{self.loop}' took {self.duration:.4} seconds"
@@ -139,6 +147,7 @@ class LoopSample:
             "loop": self.loop.serialize(),
             "raw_code": self.raw_code,
             "duration": self.duration,
+            "num_threads": self.num_threads,
         }
     
     @staticmethod
@@ -147,6 +156,7 @@ class LoopSample:
             ForLoop.from_serial(data["loop"]), # type: ignore[arg-type]
             data["raw_code"], # type: ignore[arg-type]
             data["duration"], # type: ignore[arg-type]
+            data["num_threads"], # type: ignore[arg-type]
         )
 
 def dump_samples_file(path: str, samples: list[LoopSample]) -> None:

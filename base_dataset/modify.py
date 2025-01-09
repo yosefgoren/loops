@@ -39,7 +39,8 @@ def atomic_modify(
 @click.option('-w', '--write_file', required=True, type=str)
 @click.option('-l', '--logs_filename', required=True, type=str)
 @click.option('-t', '--tgt_file', required=True, type=str)
-def modify(read_file: str, write_file: str, logs_filename: str, tgt_file: str):
+@click.option('-p', '--parallel', required=True, type=bool, default=False)
+def modify(read_file: str, write_file: str, logs_filename: str, tgt_file: str, parallel: bool):
     targets: list[ForLoop] = load_targets_file(tgt_file)
 
     assert len(targets) > 0
@@ -51,13 +52,15 @@ def modify(read_file: str, write_file: str, logs_filename: str, tgt_file: str):
     inserts.append((includes, 0))
     for loop in targets:
         # ident*2 is the loop start ID, ident*2+1 is the loop end ID
-        inserts.append((f"__timer_capture__({loop.ident*2});", loop.for_token.offset))
-        inserts.append((f"__timer_capture__({loop.ident*2+1});", loop.scope.end_pos.offset+1))
+        start_offset = loop.directive_start.offset if (parallel and loop.directive_start is not None) else loop.for_token.offset
+        inserts.append((f"__timer_capture__({loop.ident*2});\n", start_offset))
+        inserts.append((f"__timer_capture__({loop.ident*2+1});\n", loop.scope.end_pos.offset+1))
     replaces: list[tuple[re.Pattern | str, str]] = [
         ("//@#$init\n", f'__timer_init__("{logs_filename}");\n'),
         ("//@#$finish\n", f"__timer_finish__();\n"),
-        (re.compile('[\t ]*#pragma .+\n'), ""),
     ]
+    if not parallel:
+        replaces.append((re.compile('[\t ]*#pragma .+\n'), ""))
     # print("\n".join([str(m) for m in mods]))
     atomic_modify(read_file, write_file, inserts, replaces)
     print(f"results written to: {write_file}")

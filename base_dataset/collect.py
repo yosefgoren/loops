@@ -8,6 +8,7 @@ from utils.serialize import *
 class Timestamp:
     time: float  # Time in seconds
     id: int      # User-provided ID
+    thread_id: int # Thread ID of logging thread
 
 def parse_times(filename: str) -> list[Timestamp]:
     """
@@ -19,7 +20,7 @@ def parse_times(filename: str) -> list[Timestamp]:
     timestamps = []
 
     # Structure format: 'di' corresponds to double (time) and int (ID)
-    struct_format = "dQ"
+    struct_format = "dQi"
     entry_size = struct.calcsize(struct_format)
 
     with open(filename, "rb") as f:
@@ -30,10 +31,10 @@ def parse_times(filename: str) -> list[Timestamp]:
                 break  # EOF
 
             # Unpack the binary data into a tuple
-            time, id = struct.unpack(struct_format, entry_data)
+            time, id, thread_id = struct.unpack(struct_format, entry_data)
 
             # Create a Timestamp object and append to the list
-            timestamps.append(Timestamp(time=time, id=id))
+            timestamps.append(Timestamp(time=time, id=id, thread_id=thread_id))
     return timestamps
 
 @click.command()
@@ -43,7 +44,11 @@ def parse_times(filename: str) -> list[Timestamp]:
 @click.option('-l', '--loops_file', required=True, type=str, help="A json file with information on all targeted loops in code")
 def collect(output: str, runtimes_file: str, source_file: str, loops_file: str):
     parsed_timestamps: list[Timestamp] = parse_times(runtimes_file)
-    times_dict = {stamp.id: stamp.time for stamp in parsed_timestamps}
+    times_dict: dict[int, dict[int, float]] = {} # For each stamp id, a dict of times per thread.
+    for stamp in parsed_timestamps:
+        if stamp.id not in times_dict:
+            times_dict[stamp.id] = {}
+        times_dict[stamp.id][stamp.thread_id] = stamp.time
     
     targets: list[ForLoop] = load_targets_file(loops_file)
     assert len(targets) > 0
@@ -51,13 +56,21 @@ def collect(output: str, runtimes_file: str, source_file: str, loops_file: str):
     samples: list[LoopSample] = []
     
     for tgt in targets:
-        start_time: float | None = times_dict.get(tgt.ident*2, None)
-        end_time: float | None = times_dict.get(tgt.ident*2 + 1, None)
-        duration: float | None = (end_time - start_time) if (end_time is not None and start_time is not None) else None
+        start_times: dict[int, float] | None = times_dict.get(tgt.ident*2, None)
+        end_times: dict[int, float] | None = times_dict.get(tgt.ident*2 + 1, None)
+        duration = None
+        all_durations: list[float] = []
+        if end_times is not None and start_times is not None:
+            for thread_id, time_start in start_times.items():
+                if thread_id in end_times:
+                    all_durations.append(end_times[thread_id] - time_start)
+            duration = sum(all_durations)/len(all_durations)
+
         samples.append(LoopSample(
             tgt,
             full_src_code[tgt.for_token.offset:tgt.scope.end_pos.offset+1],
             duration,
+            len(all_durations)
         ))
     
     dump_samples_file(output, samples)

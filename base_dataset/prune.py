@@ -94,7 +94,14 @@ def prune(input: str, output: str):
                         # print(f"disqualifying: {inner_value}")
                         disq_inner_loop_indices.add(inner_pos_idx)
                 print(f"Got 'for': {value}, with scope: {scope}")
-                targets.append(ForLoop(value, scope, idx))
+                directive_start = None
+                if idx > 0:
+                    val = ordered_positions[idx-1][1]
+                    if type(val) is CodeScope and val.context_type is ContextType.PRAGMA:
+                        # print(f"Found loop with pragma: {val.start_pos}")
+                        directive_start = val.start_pos
+                
+                targets.append(ForLoop(value, scope, idx, directive_start))
 
     dump_targets_file(output, targets)
 
