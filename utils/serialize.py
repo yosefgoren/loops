@@ -166,3 +166,38 @@ def load_samples_file(path: str) -> list[LoopSample]:
     assert path.endswith('.json')
     data = json.load(open(path, 'r'))
     return [LoopSample.from_serial(s) for s in data]
+
+@dataclass
+class LoopCoefficent:
+    loop: ForLoop
+    raw_code: str
+    duration: float
+    thread_counts: list[int]
+    coeffient: float
+
+    def serialize(self) -> dict[str, object]:
+        return {
+            "loop": self.loop.serialize(),
+            "raw_code": self.raw_code,
+            "duration": self.duration,
+            "thread_counts": self.thread_counts,
+            "coeffient": self.coeffient,
+        }
+    
+    @staticmethod
+    def from_serial(data: dict[str, object]):
+        return LoopCoefficent(
+            ForLoop.from_serial(data["loop"]), # type: ignore[arg-type]
+            data["raw_code"], # type: ignore[arg-type]
+            data["duration"], # type: ignore[arg-type]
+            data["thread_counts"], # type: ignore[arg-type]
+            data["coeffient"], # type: ignore[arg-type]
+        )
+
+def dump_coefficients_file(path: str, coefficients: list[LoopCoefficent]) -> None:
+    json.dump([s.serialize() for s in coefficients], open(path, 'w'), indent=4)
+
+def load_coefficients_file(path: str) -> list[LoopSample]:
+    assert path.endswith('.json')
+    data = json.load(open(path, 'r'))
+    return [LoopSample.from_serial(s) for s in data]

@@ -17,3 +17,4 @@ ompcpp.train.jsonl
 ompcpp.validate.jsonl
 ompcpp.zip
 makeapi_database.json
+images/

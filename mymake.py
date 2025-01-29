@@ -57,7 +57,7 @@ for bench_name in [
     all_rules.append(ShellRule(targets, [scopes, targets_script],
         f"{pymodule_script_prefix(targets_script.path)} --input {scopes.path} -o {targets.path}"
     ))
-    for num_threads in [1, 16]:
+    for num_threads in [1, 2, 4, 8, 16]:
         do_parallel: bool = num_threads > 1
 
         basename = f"{bench_name}_{num_threads}"
