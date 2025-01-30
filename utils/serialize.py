@@ -197,7 +197,7 @@ class LoopCoefficent:
 def dump_coefficients_file(path: str, coefficients: list[LoopCoefficent]) -> None:
     json.dump([s.serialize() for s in coefficients], open(path, 'w'), indent=4)
 
-def load_coefficients_file(path: str) -> list[LoopSample]:
+def load_coefficients_file(path: str) -> list[LoopCoefficent]:
     assert path.endswith('.json')
     data = json.load(open(path, 'r'))
-    return [LoopSample.from_serial(s) for s in data]
+    return [LoopCoefficent.from_serial(s) for s in data]

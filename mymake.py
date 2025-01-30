@@ -10,6 +10,7 @@ scopes_script = StaticFileNode(f"{BASE_DATASET_DIR}/scrape.py")
 targets_script = StaticFileNode(f"{BASE_DATASET_DIR}/prune.py")
 modify_script = StaticFileNode(f"{BASE_DATASET_DIR}/modify.py")
 collect_script = StaticFileNode(f"{BASE_DATASET_DIR}/collect.py")
+aggregate_script = StaticFileNode(f"{BASE_DATASET_DIR}/aggregate.py")
 finalize_script = StaticFileNode(f"{BASE_DATASET_DIR}/finalize.py")
 
 def pymodule_script_prefix(script_path: str) -> str:
@@ -21,7 +22,7 @@ def pymodule_script_prefix(script_path: str) -> str:
 
 
 all_rules: list[Rule] = []
-sample_nodes: list[CreatedFileNode] = []
+coefficients_nodes: list[CreatedFileNode] = []
 
 # Add rules shared across all benchmarks:
 timer_cpp_lib = StaticFileNode("timer.hpp")
@@ -57,14 +58,17 @@ for bench_name in [
     all_rules.append(ShellRule(targets, [scopes, targets_script],
         f"{pymodule_script_prefix(targets_script.path)} --input {scopes.path} -o {targets.path}"
     ))
-    for num_threads in [1, 2, 4, 8, 16]:
+    
+    benchmark_sample_nodes: list[CreatedFileNode] = []
+    THREAD_COUNTS = [1, 2, 4, 8, 16]
+    for num_threads in THREAD_COUNTS:
         do_parallel: bool = num_threads > 1
 
         basename = f"{bench_name}_{num_threads}"
         times_log = CreatedFileNode(f"./samples/{basename}.times")
 
         mod = FileModificationNode(src_file, f"{num_threads}")
-        all_rules.append(ShellFileModifyRule(mod, [src_file, targets, modify_script],
+        all_rules.append(ShellFileModifyRule(mod, [targets, modify_script],
             f"{pymodule_script_prefix(modify_script.path)} --read_file {src_file.path} --write_file {src_file.path} --logs_filename {times_log.path} --tgt_file {targets.path} --parallel {'True' if do_parallel else 'False'}"
         ))
 
@@ -78,13 +82,19 @@ for bench_name in [
             f"{pymodule_script_prefix(collect_script.path)} -o {samples.path} --runtimes_file {times_log.path} --source_file {src_file_copy.path} --loops_file {targets.path}"
         ))
         
+        benchmark_sample_nodes.append(samples)
 
-        sample_nodes.append(samples)
+    coefs = CreatedFileNode(f"./samples/{bench_name}.coefficients.json")
+    thread_counts_arg: str = ' '.join([str(i) for i in THREAD_COUNTS])
+    all_rules.append(ShellRule(coefs, [aggregate_script] + benchmark_sample_nodes,
+        f"{pymodule_script_prefix(aggregate_script.path)} -b {bench_name} -t '{thread_counts_arg}'"
+    )) # Example command line: `python3 -m base_dataset.aggregate -b bt -t "1 2 4 8 16"`
+    coefficients_nodes.append(coefs)
 
 dataset_name = "ompcpp"
 dataset_files = CreatedFileNode(f"{dataset_name}.train.jsonl") # TODO: add MAKE-API feature for target with multiple files, and use it here to make ompcpp.validate.jsonl another declared target.
-gen_dataset_cmdline = f"{pymodule_script_prefix(finalize_script.path)} {dataset_name} {' '.join([node.path for node in sample_nodes])}"
-all_rules.append(ShellRule(dataset_files, sample_nodes, gen_dataset_cmdline))
+gen_dataset_cmdline = f"{pymodule_script_prefix(finalize_script.path)} {dataset_name} {' '.join([node.path for node in coefficients_nodes])}"
+all_rules.append(ShellRule(dataset_files, coefficients_nodes, gen_dataset_cmdline))
 
 dataset_zip = CreatedFileNode(f"{dataset_name}.zip")
 all_rules.append(ShellRule(dataset_zip, [dataset_files], f"zip {dataset_zip.path} {dataset_name}.train.jsonl {dataset_name}.validate.jsonl"))
